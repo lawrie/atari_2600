@@ -15,3 +15,4 @@ firmware.map
 *.blif
 *.elf
 *.hex
+*.sym

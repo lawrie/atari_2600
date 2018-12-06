@@ -84,7 +84,7 @@ module ili9341 (
 
       // Memory Access Control
       INIT_SEQ[34] <= {1'b0, 8'h36};
-      INIT_SEQ[35] <= {1'b1, 8'he8};
+      INIT_SEQ[35] <= {1'b1, 8'ha8};
       INIT_SEQ[36] <= {1'b0, 8'h3A};
       INIT_SEQ[37] <= {1'b1, 8'h55};
 

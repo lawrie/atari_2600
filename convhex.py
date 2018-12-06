@@ -1,6 +1,7 @@
 import binascii
+import sys
 i = 0
-filename = 'test.bin'
+filename = sys.argv[1] + '.bin'
 with open(filename, 'rb') as f:
     content = f.read()
     for x in content:

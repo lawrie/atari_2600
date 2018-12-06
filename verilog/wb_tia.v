@@ -221,7 +221,7 @@ module wb_tia #(
 
         if (valid_write_cmd) begin
           case (adr_i) 
-          'h00: begin; vsync <= dat_i[1]; if (dat_i[1]) do_sync <= 0; end  // VSYNC
+          'h00: begin; vsync <= dat_i[1]; if (dat_i[1]) do_sync <= 1; end  // VSYNC
           'h01: vblank <= dat_i[1];       // VBLANK 
           'h02: wsync <= 1;               // WSYNC
           'h03: ;                         // RSYNC
@@ -283,8 +283,6 @@ module wb_tia #(
         ack_o <= valid_cmd;
     end
 
-   wire resetn = 1;
-
    reg[10:0] xpos;
    reg[9:0] ypos;
 
@@ -293,10 +291,10 @@ module wb_tia #(
    wire       busy;
    reg [15:0] pix_data;
    wire       blank_busy = !(&busy_counter);
-   reg [2:0]  busy_counter = 0;
+   reg [7:0]  busy_counter = 0;
 
    ili9341 lcd (
-                .resetn(resetn),
+                .resetn(!rst_i),
                 .clk_16MHz (clk_i),
                 .nreset (nreset),
                 .cmd_data (cmd_data),
@@ -315,8 +313,15 @@ module wb_tia #(
       free_cpu <= 0;
       done_sync = 0;
       pix_clk <= 0;
+      reset_cursor <= 0;
 
-      if ((!busy && !blank_busy) && pix_clk == 0) begin
+      if (do_sync) begin
+        reset_cursor <= 1;
+        xpos <= 0;
+        ypos <= 0;
+        done_sync <= 1;
+        free_cpu <= 1;
+      end else if (!rst_i && !busy && !blank_busy && pix_clk == 0) begin
          if (ypos < 261) begin // 262 clock counts depth
             if (xpos < 455)  begin // 228 x 2 = 456 clock counts width
                xpos <= xpos + 1;
@@ -341,7 +346,6 @@ module wb_tia #(
               
          end else begin
             ypos <= 0;
-            done_sync <= 1;
          end
       end
 
