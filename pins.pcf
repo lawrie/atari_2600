@@ -1,0 +1,41 @@
+# Diagnostic Leds
+set_io -nowarn leds[0] H9 # pin 6
+set_io -nowarn leds[1] D9 # pin 7
+set_io -nowarn leds[2] D8 # pin 8
+set_io -nowarn leds[3] C9 # pin 9
+set_io -nowarn leds[4] A9 # pin 10
+set_io -nowarn leds[5] B8 # pin 11
+set_io -nowarn leds[6] A8 # pin 12
+set_io -nowarn leds[7] B7 # pin 13
+
+set_io -nowarn lcd_D0 A2          # pin 1
+set_io -nowarn lcd_D1 A1          # pin 2
+set_io -nowarn lcd_D2 B1          # pin 3
+set_io -nowarn lcd_D3 C2          # pin 4
+set_io -nowarn lcd_D4 C1          # pin 5
+set_io -nowarn lcd_D5 D2          # pin 6
+set_io -nowarn lcd_D6 D1          # pin 7
+set_io -nowarn lcd_D7 E2          # pin 8
+set_io -nowarn lcd_nreset E1      # pin 9
+set_io -nowarn lcd_te G2          # pin 10
+set_io -nowarn lcd_cmd_data H1    # pin 11
+set_io -nowarn lcd_write_edge J1  # pin 12
+set_io -nowarn lcd_backlight H2   # pin 13
+
+set_io BUTTONS[0] G3
+set_io BUTTONS[1] J3
+set_io BUTTONS[2] J4
+set_io BUTTONS[3] G9
+set_io BUTTONS[4] E8
+set_io BUTTONS[5] J2
+set_io BUTTONS[6] A7
+set_io BUTTONS[7] B6
+
+# LED
+set_io -nowarn led B3
+
+# USB
+set_io -nowarn usbpu A3
+
+# 16MHz clock
+set_io -nowarn clock B2

@@ -1,0 +1,17 @@
+*.dblite
+hardware.asc
+hardware.bin
+hardware.blif
+hardware.rpt
+hardware.log
+firmware.map
+*.out
+*.vcd
+*.idea
+**/*.iml
+*.bin
+*.asc
+*.rpt
+*.blif
+*.elf
+*.hex
