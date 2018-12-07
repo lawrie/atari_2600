@@ -1,5 +1,5 @@
 /*
- * Simple Wishbone compliant Atari 2600 TIA module.
+ * Wishbone compliant Atari 2600 TIA module.
  */
 module wb_tia #(
     parameter WB_DATA_WIDTH = 8,
@@ -31,15 +31,17 @@ module wb_tia #(
     // cpu control
     output                          stall_cpu
 );
+    // Diagnostics
+    assign leds = x_m0;
 
-    assign leds = x_bl;
-
+    // CPU control
     assign stall_cpu = wsync;
 
     // Button numbers
     localparam UP = 0, RIGHT = 1, LEFT = 2, DOWN = 3,
                A = 4, B = 5, X = 6, y = 7;
 
+    // TIA registers
     reg [15:0] colors [0:128];
     reg [6:0] colubk, colup0, colup1, colupf;
     reg vsync, vblank, wsync, enam0, enam1, enabl, vdelbl, vdelp0, vdelp1;
@@ -54,20 +56,24 @@ module wb_tia #(
     reg [3:0] audc0, audc1, audv0, audv1;
     reg [4:0] audf0, audf1;
     reg inpt0 = 0, inpt1 = 0, inpt2 = 0, inpt3 = 0, inpt4 = 0, inpt5 = 0;
-
+    reg free_cpu, do_sync, done_sync;
+    
+    // Read the color numbers
     initial $readmemh("colors.mem", colors);
 
+    // Wishbone interface
     wire valid_cmd = !rst_i && stb_i;
     wire valid_write_cmd = valid_cmd && we_i;
     wire valid_read_cmd = valid_cmd && !we_i;
 
-    reg free_cpu, do_sync, done_sync;
-    
     integer i;
 
+    // TIA implementation
     always @(posedge clk_i) begin
         if (done_sync) do_sync <= 0;
+        if (free_cpu) wsync <= 0;
 
+        // Read-only registers
         if (valid_read_cmd) begin
           dat_o <= 0;
           case (adr_i)
@@ -88,8 +94,7 @@ module wb_tia #(
           endcase
         end
 
-        if (free_cpu) wsync <= 0;
-
+        // Write-only registers
         if (valid_write_cmd) begin
           case (adr_i) 
           'h00: begin; vsync <= dat_i[1]; if (dat_i[1]) do_sync <= 1; end  // VSYNC
@@ -122,7 +127,7 @@ module wb_tia #(
           'h1b: grp0 <= dat_i;            // GRP0
           'h1c: grp1 <= dat_i;            // GRP1
           'h1d: enam0 <= dat_i[1];        // ENAM0
-          'h1d: enam1 <= dat_i[1];        // ENAM1
+          'h1e: enam1 <= dat_i[1];        // ENAM1
           'h1f: enabl <= dat_i[1];        // ENABL
           'h20: hmp0 <= $signed(dat_i[7:4]);       // HMP0
           'h21: hmp1 <= $signed(dat_i[7:4]);       // HMP1
@@ -155,8 +160,9 @@ module wb_tia #(
         ack_o <= valid_cmd;
     end
 
-   reg[10:0] xpos;
-   reg[9:0] ypos;
+   // LCD data
+   reg[8:0] xpos;
+   reg[8:0] ypos;
 
    reg        pix_clk = 0;
    reg        reset_cursor = 0;
@@ -165,6 +171,7 @@ module wb_tia #(
    wire       blank_busy = !(&busy_counter);
    reg [7:0]  busy_counter = 0;
 
+   // ILI9341 LCD 8-bit parallel interface
    ili9341 lcd (
                 .resetn(!rst_i),
                 .clk_16MHz (clk_i),
@@ -178,8 +185,9 @@ module wb_tia #(
                 .busy (busy)
                 );
 
+   // Drive the LCD like a CRT, racing the beam
    wire pf_bit = pf[xpos < 160 ? (xpos >> 3) : ((319 - xpos) >> 3)];
-   wire xp = (xpos >> 1);
+   wire [7:0] xp = (xpos >> 1);
 
    always @(posedge clk_i) begin
       free_cpu <= 0;
@@ -205,7 +213,7 @@ module wb_tia #(
             
             if (ypos < 240 && xpos < 320) begin // Don't draw in blank or overscan areas
               if (ypos >= 24 && ypos < 226) // Leave gap of 24 pixels at top and bottom
-                pix_data <= colors[enabl && (x_bl == (xpos >> 1)) ? colupf :
+                pix_data <= colors[enabl && x_bl == xp ? colupf :
                                    enam0 && x_m0 == xp ? colup0 :
                                    enam1 && x_m1 == xp ? colup1 :
                                    xp >= x_p0 && xp < x_p0 + 8 && grp0[xp - x_p0] ? colup0 :
