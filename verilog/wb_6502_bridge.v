@@ -30,7 +30,7 @@ module wb_6502_bridge #(
     reg [CLK_DIV_BITS-1:0] clk_div;
 
     // outputs to wb
-    assign stb_o = 1; // Always read data from address
+    assign stb_o = clk_div == 2; // Always read data from address
 
     // outputs to 6502
     assign read_bus = dat_i;

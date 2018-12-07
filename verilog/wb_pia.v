@@ -16,8 +16,6 @@ module wb_pia (
 
 
     input [7:0]                     buttons,
-    output                          led,
-    output [7:0]                    leds,
     input                           ready
 );
 
@@ -40,7 +38,7 @@ module wb_pia (
           'h01: ; // SWACNT
           'h02: ; // SWCHB
           'h03: ; // SWBCNT
-          'h04: begin dat_o <= intim; leds <= intim; end // INTIM
+          'h04: dat_o <= intim; // INTIM
           endcase
         end
 
@@ -48,7 +46,7 @@ module wb_pia (
           case (adr_i)
           'h14: begin interval <= 1; reset_timer <= dat_i; end // TIM1T
           'h15: begin interval <= 8; reset_timer <= dat_i; end  // TIM8T
-          'h16: begin led <= 1; leds <= dat_i; interval = 64; reset_timer <= dat_i; end // TIM64T
+          'h16: begin interval = 64; reset_timer <= dat_i; end // TIM64T
           'h17: begin interval = 1024; reset_timer <= dat_i; end // T1024T
           endcase
         end

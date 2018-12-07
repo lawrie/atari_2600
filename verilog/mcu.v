@@ -26,8 +26,6 @@ module mcu (
 
     // Show data fetched on leds 
     assign lcd_backlight = 1;
-    reg [7:0] dummy_leds;
-    reg dummy_led, dummy_led2;
 
     // Disable USB
     assign usbpu = 0;
@@ -42,7 +40,7 @@ module mcu (
 
       // Some debugging diagnostics
       if (rom_stb_i) last_rom_adr <= rom_adr_i;
-      if (ram_stb_i && ram_adr_i == 'h80 && !ram_we_i) leds <= ram_dat_o;
+      //if (tia_stb_i && tia_adr_i == 'h24 && tia_we_i) leds <= tia_dat_i;
     end
 
     ///////////////////////////////////////////////////////////////////////////
@@ -142,6 +140,7 @@ module mcu (
         .ack_o(tia_ack_o),
         .dat_o(tia_dat_o),
         .buttons(buttons),
+        .leds(leds),
         .stall_cpu(stall_cpu),
         .nreset(lcd_nreset),
         .cmd_data(lcd_cmd_data),
@@ -204,9 +203,7 @@ module mcu (
         .ack_o(pia_ack_o),
         .dat_o(pia_dat_o),
         .buttons(buttons),
-        .ready(ready),
-        .leds(dummy_leds),
-        .led(dummy_led2)
+        .ready(ready)
     );
 
     ///////////////////////////////////////////////////////////////////////////

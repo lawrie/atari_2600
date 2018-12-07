@@ -26,10 +26,13 @@ module wb_tia #(
 
     // buttons
     input [7:0]                     buttons,
+    output [7:0]                    leds,
 
     // cpu control
     output                          stall_cpu
 );
+
+    assign leds = x_bl;
 
     assign stall_cpu = wsync;
 
@@ -46,7 +49,7 @@ module wb_tia #(
     reg [7:0] x_p0, x_p1, x_m0, x_m1, x_bl;
     reg [19:0] pf;
     reg [7:0] ctrlpf;
-    reg [3:0] hmp0, hmp1, hmm0, hmm1, hmbl;
+    reg signed [7:0] hmp0, hmp1, hmm0, hmm1, hmbl;
     reg [15:0] cx;
     reg [3:0] audc0, audc1, audv0, audv1;
     reg [4:0] audf0, audf1;
@@ -59,7 +62,7 @@ module wb_tia #(
     wire valid_read_cmd = valid_cmd && !we_i;
 
     reg free_cpu, do_sync, done_sync;
-
+    
     integer i;
 
     always @(posedge clk_i) begin
@@ -105,11 +108,11 @@ module wb_tia #(
           'h0d: for(i = 0; i<4; i = i + 1) pf[i] <= dat_i[4+i];   // PF0
           'h0e: for(i = 0; i<8; i = i + 1) pf[4+i] <= dat_i[7-i]; // PF1
           'h0f: for(i = 0; i<8; i = i + 1) pf[12+i] = dat_i[i];   // PF2
-          'h10: x_p0 <= xpos >> 1;        // RESP0
-          'h11: x_p1 <= xpos >> 1;        // RESP1
-          'h12: x_m0 <= xpos >> 1;        // RESM0
-          'h13: x_m1 <= xpos >> 1;        // RESM1
-          'h14: x_bl <= xpos >> 1;        // RESBL
+          'h10: x_p0 <= xpos >= 320 ? 0 : xpos >> 1;        // RESP0
+          'h11: x_p1 <= xpos >= 320 ? 0 : xpos >> 1;        // RESP1
+          'h12: x_m0 <= xpos >= 320 ? 0 : xpos >> 1;        // RESM0
+          'h13: x_m1 <= xpos >= 320 ? 0 : xpos >> 1;        // RESM1
+          'h14: x_bl <= xpos >= 320 ? 0 : xpos >> 1;        // RESBL
           'h15: audc0 <= dat_i[3:0];      // AUDC0
           'h16: audc1 <= dat_i[3:0];      // AUDC1
           'h17: audf0 <= dat_i[4:0];      // AUDF0
@@ -121,24 +124,25 @@ module wb_tia #(
           'h1d: enam0 <= dat_i[1];        // ENAM0
           'h1d: enam1 <= dat_i[1];        // ENAM1
           'h1f: enabl <= dat_i[1];        // ENABL
-          'h20: hmp0 <= dat_i[3:0];       // HMP0
-          'h21: hmp1 <= dat_i[3:0];       // HMP1
-          'h22: hmm0 <= dat_i[3:0];       // HMM0
-          'h23: hmm1 <= dat_i[3:0];       // HMM1
-          'h24: hmbl <= dat_i[3:0];       // HMBL
+          'h20: hmp0 <= $signed(dat_i[7:4]);       // HMP0
+          'h21: hmp1 <= $signed(dat_i[7:4]);       // HMP1
+          'h22: hmm0 <= $signed(dat_i[7:4]);       // HMM0
+          'h23: hmm1 <= $signed(dat_i[7:4]);       // HMM1
+          'h24: hmbl <= $signed(dat_i[7:4]);       // HMBL
           'h25: vdelp0 <= dat_i[0];       // VDELP0
           'h26: vdelp1 <= dat_i[0];       // VDELP1
           'h27: vdelbl <= dat_i[0];       // VDELBL
-          'h28: ;                         // RESMP0
-          'h29: ;                         // RESMP1
+          'h28: x_m0 = x_p0;              // RESMP0
+          'h29: x_m1 = x_p1;              // RESMP1
           'h2a: begin                     // HMOVE
-                  x_p0 <= x_p0 + $signed(hmp0);
-                  x_p1 <= x_p1 + $signed(hmp1);
-                  x_m0 <= x_m0 + $signed(hmm0);
-                  x_m1 <= x_m1 + $signed(hmm1);
-                  x_bl <= x_bl + $signed(hmbl);
+                  x_p0 <= x_p0 - hmp0;
+                  x_p1 <= x_p1 - hmp1;
+                  x_m0 <= x_m0 - hmm0;
+                  x_m1 <= x_m1 - hmm1;
+                  x_bl <= x_bl - hmbl; 
                 end
-          'h2b: begin hmp0 <= 0;          // HMCLR
+          'h2b: begin 
+                  hmp0 <= 0;             // HMCLR
                   hmp1 <= 0;  
                   hmm0 <= 0;  
                   hmm1 <= 0;  
@@ -201,7 +205,7 @@ module wb_tia #(
             
             if (ypos < 240 && xpos < 320) begin // Don't draw in blank or overscan areas
               if (ypos >= 24 && ypos < 226) // Leave gap of 24 pixels at top and bottom
-                pix_data <= colors[enabl && x_bl == xp ? colupf :
+                pix_data <= colors[enabl && (x_bl == (xpos >> 1)) ? colupf :
                                    enam0 && x_m0 == xp ? colup0 :
                                    enam1 && x_m1 == xp ? colup1 :
                                    xp >= x_p0 && xp < x_p0 + 8 && grp0[xp - x_p0] ? colup0 :
