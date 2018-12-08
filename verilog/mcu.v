@@ -22,7 +22,9 @@ module mcu (
     input [7:0] BUTTONS
 );
 
-    assign led = 0;
+    reg [7:0] dummy_leds;
+
+    assign led = stall_cpu;
 
     // Show data fetched on leds 
     assign lcd_backlight = 1;
@@ -40,7 +42,7 @@ module mcu (
 
       // Some debugging diagnostics
       if (rom_stb_i) last_rom_adr <= rom_adr_i;
-      //if (tia_stb_i && tia_adr_i == 'h24 && tia_we_i) leds <= tia_dat_i;
+      if (pia_stb_i && pia_adr_i == 'h280 && !pia_we_i) leds <= pia_dat_o;
     end
 
     ///////////////////////////////////////////////////////////////////////////
@@ -140,7 +142,7 @@ module mcu (
         .ack_o(tia_ack_o),
         .dat_o(tia_dat_o),
         .buttons(buttons),
-        .leds(leds),
+        .leds(dummy_leds),
         .stall_cpu(stall_cpu),
         .nreset(lcd_nreset),
         .cmd_data(lcd_cmd_data),

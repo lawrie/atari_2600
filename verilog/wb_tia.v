@@ -38,23 +38,24 @@ module wb_tia #(
     assign stall_cpu = wsync;
 
     // Button numbers
-    localparam UP = 0, RIGHT = 1, LEFT = 2, DOWN = 3,
-               A = 4, B = 5, X = 6, y = 7;
+    localparam UP = 4, RIGHT = 7, LEFT = 6, DOWN = 5,
+               A = 3, B = 1, X = 0, Y = 2;
 
     // TIA registers
     reg [15:0] colors [0:128];
     reg [6:0] colubk, colup0, colup1, colupf;
     reg vsync, vblank, wsync, enam0, enam1, enabl, vdelbl, vdelp0, vdelp1;
-    reg refp0, refp1;
-    reg [7:0] nusiz0, nusiz1;
+    reg refp0, refp1, refpf, scorepf, pf_priority;
+    reg [2:0] p0_opt, p1_opt;
     reg [7:0] grp0, grp1;
     reg [7:0] x_p0, x_p1, x_m0, x_m1, x_bl;
     reg [19:0] pf;
-    reg [7:0] ctrlpf;
     reg signed [7:0] hmp0, hmp1, hmm0, hmm1, hmbl;
-    reg [15:0] cx;
+    reg [14:0] cx;
     reg [3:0] audc0, audc1, audv0, audv1;
     reg [4:0] audf0, audf1;
+    reg m0_locked, m1_locked;
+    reg [3:0] ball_w = 1, m0_w = 1, m1_w = 1;
     reg inpt0 = 0, inpt1 = 0, inpt2 = 0, inpt3 = 0, inpt4 = 0, inpt5 = 0;
     reg free_cpu, do_sync, done_sync;
     
@@ -77,14 +78,14 @@ module wb_tia #(
         if (valid_read_cmd) begin
           dat_o <= 0;
           case (adr_i)
-          'h00: ;                         // CXM0P
-          'h01: ;                         // CXM1P
-          'h02: ;                         // CXP0FB
-          'h03: ;                         // CXP1FB
-          'h04: ;                         // CXM0FB
-          'h05: ;                         // CXM1FB
-          'h06: ;                         // CXBLPF
-          'h07: ;                         // CXPPMM
+          'h00: dat_o <= cx[14:13];       // CXM0P
+          'h01: dat_o <= cx[12:11];       // CXM1P
+          'h02: dat_o <= cx[10:9];        // CXP0FB
+          'h03: dat_o <= cx[8:7];         // CXP1FB
+          'h04: dat_o <= cx[6:5];         // CXM0FB
+          'h05: dat_o <= cx[4:3];         // CXM1FB
+          'h06: dat_o <= cx[2];           // CXBLPF
+          'h07: dat_o <= cx[1:0];         // CXPPMM
           'h08: dat_o <= inpt0 << 7;      // INPT0
           'h09: dat_o <= inpt1 << 7;      // INPT1
           'h0a: dat_o <= inpt2 << 7;      // INPT2
@@ -97,17 +98,31 @@ module wb_tia #(
         // Write-only registers
         if (valid_write_cmd) begin
           case (adr_i) 
-          'h00: begin; vsync <= dat_i[1]; if (dat_i[1]) do_sync <= 1; end  // VSYNC
+          'h00: begin                     // VSYNC
+                   vsync <= dat_i[1]; 
+                   if (dat_i[1]) do_sync <= 1; 
+                end
           'h01: vblank <= dat_i[1];       // VBLANK 
           'h02: wsync <= 1;               // WSYNC
           'h03: ;                         // RSYNC
-          'h04: nusiz0 <= dat_i;          // NUSIZ0
-          'h05: nusiz1 <= dat_i;          // NUSIZ1
+          'h04: begin                     // NUSIZ0 
+                  m0_w <= (1 << dat_i[5:4]); 
+                  p0_opt <= dat_i[2:0]; 
+                end
+          'h05: begin                     // NUSIZ1
+                  m1_w <= (1 << dat_i[5:4]);
+                  p1_opt <= dat_i[2:0];
+                end
           'h06: colup0 <= dat_i[7:1];     // COLUP0
           'h07: colup1 <= dat_i[7:1];     // COLUP1
           'h08: colupf <= dat_i[7:1];     // COLUPPF
           'h09: colubk <= dat_i[7:1];     // COLUPBK
-          'h0a: ctrlpf <= dat_i;          // CTRLPF
+          'h0a: begin                     // CTRLPF
+                  ball_w <= (1 << dat_i[5:4]); 
+                  refpf <= dat_i[0];
+                  scorepf <= dat_i[1];
+                  pf_priority <= dat_i[2];
+                end
           'h0b: refp0 <= dat_i[3];        // REFP0
           'h0c: refp1 <= dat_i[3];        // REFP1
           'h0d: for(i = 0; i<4; i = i + 1) pf[i] <= dat_i[4+i];   // PF0
@@ -137,8 +152,8 @@ module wb_tia #(
           'h25: vdelp0 <= dat_i[0];       // VDELP0
           'h26: vdelp1 <= dat_i[0];       // VDELP1
           'h27: vdelbl <= dat_i[0];       // VDELBL
-          'h28: x_m0 = x_p0;              // RESMP0
-          'h29: x_m1 = x_p1;              // RESMP1
+          'h28: begin x_m0 = x_p0 + 4; m0_locked = dat_i[1]; end // RESMP0
+          'h29: begin x_m1 = x_p1 + 4; m1_locked = dat_i[1]; end // RESMP1
           'h2a: begin                     // HMOVE
                   x_p0 <= x_p0 - hmp0;
                   x_p1 <= x_p1 - hmp1;
