@@ -19,3 +19,6 @@ cd atari_2600
 ./asm pong
 make
 ```
+
+You will need a Linux system with the TinyFPGA tools installed as described in the [TinyFPGA BX User Guide](https://tinyfpga.com/bx/guide.html).
+
