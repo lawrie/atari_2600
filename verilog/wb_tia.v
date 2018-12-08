@@ -56,9 +56,11 @@ module wb_tia #(
     reg m0_locked, m1_locked;
     reg [3:0] ball_w = 1, m0_w = 1, m1_w = 1;
     reg [5:0] p0_w = 8, p1_w = 8;
+    reg [1:0] p0_scale, p1_scale;
     reg [1:0] p0_copies, p1_copies;
     reg [6:0] p0_spacing, p1_spacing;
     reg inpt0 = 0, inpt1 = 0, inpt2 = 0, inpt3 = 0, inpt4 = 0, inpt5 = 0;
+    reg dump_ports, latch_ports;
     reg free_cpu, do_sync, done_sync;
     
     // Read the color numbers
@@ -104,33 +106,39 @@ module wb_tia #(
                    vsync <= dat_i[1]; 
                    if (dat_i[1]) do_sync <= 1; 
                 end
-          'h01: vblank <= dat_i[1];       // VBLANK 
+          'h01: begin                     // VBLANK
+                  vblank <= dat_i[1];
+                  latch_ports <= dat_i[6];
+                  dump_ports <= dat_i[7];
+                end
           'h02: wsync <= 1;               // WSYNC
           'h03: ;                         // RSYNC
           'h04: begin                     // NUSIZ0 
                   m0_w <= (1 << dat_i[5:4]); 
+                  p0_scale <= 0;
                   case (dat_i[2:0])
                     0: begin p0_w <= 8; p0_copies <= 0; end
                     1: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 16; end
                     2: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 32; end
                     3: begin p0_w <= 8; p0_copies <= 2; p0_spacing <= 16; end
                     4: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 64; end
-                    5: begin p0_w <= 16; p0_copies <= 0; end
+                    5: begin p0_w <= 16; p0_scale <= 1; p0_copies <= 0; end
                     6: begin p0_w <= 8; p0_copies <= 2; p0_spacing <= 32; end
-                    7: begin p0_w <=32; p0_copies <= 0; end
+                    7: begin p0_w <=32; p0_scale <= 2; p0_copies <= 0; end
                   endcase
                 end
           'h05: begin                     // NUSIZ1
                   m1_w <= (1 << dat_i[5:4]);
+                  p1_scale <= 0;
                   case (dat_i[2:0])
                     0: begin p1_w <= 8; p1_copies <= 0; end
                     1: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 16; end
                     2: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 32; end
                     3: begin p1_w <= 8; p1_copies <= 2; p1_spacing <= 16; end
                     4: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 64; end
-                    5: begin p1_w <= 16; p1_copies <= 0; end
+                    5: begin p1_w <= 16; p1_scale <= 1; p1_copies <= 0; end
                     6: begin p1_w <= 8; p1_copies <= 2; p1_spacing <= 32; end
-                    7: begin p1_w <=32; p1_copies <= 0; end
+                    7: begin p1_w <=32; p1_scale <= 2; p1_copies <= 0; end
                   endcase
                 end
           'h06: colup0 <= dat_i[7:1];     // COLUP0
@@ -172,8 +180,8 @@ module wb_tia #(
           'h25: vdelp0 <= dat_i[0];       // VDELP0
           'h26: vdelp1 <= dat_i[0];       // VDELP1
           'h27: vdelbl <= dat_i[0];       // VDELBL
-          'h28: begin x_m0 = x_p0 + 4; m0_locked = dat_i[1]; end // RESMP0
-          'h29: begin x_m1 = x_p1 + 4; m1_locked = dat_i[1]; end // RESMP1
+          'h28: begin x_m0 = x_p0 + (p0_w >> 1); m0_locked = dat_i[1]; end // RESMP0
+          'h29: begin x_m1 = x_p1 + (p1_w >> 1); m1_locked = dat_i[1]; end // RESMP1
           'h2a: begin                     // HMOVE
                   x_p0 <= x_p0 - hmp0;
                   x_p1 <= x_p1 - hmp1;
@@ -221,7 +229,7 @@ module wb_tia #(
                 );
 
    // Drive the LCD like a CRT, racing the beam
-   wire pf_bit = pf[xpos < 160 ? (xpos >> 3) : ((319 - xpos) >> 3)];
+   wire pf_bit = pf[xpos < 160 ? (xpos >> 3) : ((refpf ? xpos - 160 : 319 - xpos) >> 3)];
    wire [7:0] xp = (xpos >> 1);
 
    always @(posedge clk_i) begin
@@ -252,19 +260,20 @@ module wb_tia #(
                   enabl && xp >= x_bl && xp < x_bl + ball_w ? colupf :
                   enam0 && xp >= x_m0 && xp < x_m0 + m0_w ? colup0 :
                   enam1 && xp >= x_m1 && xp < x_m1 + m1_w ? colup1 :
+                  pf_priority && pf_bit ? (scorepf ? (xp < 160 ? colup0 : colup1) : colupf) :
                   (xp >= x_p0 && xp < x_p0 + p0_w || 
                    (p0_copies > 0 && ((xp - p0_spacing) >= x_p0 && 
                    (xp - p0_spacing) < x_p0 + p0_w)) ||
                    (p0_copies > 1 && ((xp - (p0_spacing << 1)) >= x_p0 &&
                    (xp - (p0_spacing << 1)) < x_p0 + p0_w))) && 
-                    grp0[refp0 ? xp - x_p0 : 7 - (xp - x_p0)] ? colup0 :
+                    grp0[refp0 ? (xp - x_p0) >> p0_scale : 7 - ((xp - x_p0) >> p0_scale)] ? colup0 :
                   (xp >= x_p1 && xp < x_p1 + p1_w ||
                    (p1_copies > 0 && ((xp - p1_spacing) >= x_p1 &&
                    (xp - p1_spacing) < x_p1 + p1_w)) ||
                    (p1_copies > 1 && ((xp - (p1_spacing << 1)) >= x_p1 &&
                    (xp - (p1_spacing << 1)) < x_p1 + p1_w))) && 
-                    grp1[refp1 ? xp - x_p1 : 7 - (xp - x_p1)] ? colup1 :
-                  pf_bit ? colupf : colubk];
+                    grp1[refp1 ? (xp - x_p1) >> p1_scale : 7 - ((xp - x_p1) >> p1_scale)] ? colup1 :
+                  pf_bit ? (scorepf ? (xp < 160 ? colup0 : colup1) :  colupf) : colubk];
               else pix_data <= 0;
              
               pix_clk <= 1;

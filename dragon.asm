@@ -27,8 +27,10 @@ Clear:
     LDA #0
     STA COLUBK
 
-    LDA #6
+    LDA #7
     STA NUSIZ0
+    LDA #8
+    STA REFP0
     
     LDA #2            ; Start VBLANK
     STA VBLANK
