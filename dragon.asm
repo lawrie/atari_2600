@@ -23,11 +23,15 @@ Clear:
     BNE Clear
 	
     LDA #$46          ; Set colours
-	STA COLUP0
+    STA COLUP0
     LDA #0
-	STA COLUBK
-	LDA #2            ; Start VBLANK
-	STA VBLANK
+    STA COLUBK
+
+    LDA #6
+    STA NUSIZ0
+    
+    LDA #2            ; Start VBLANK
+    STA VBLANK
 Frame:
     LDA #2
 Vsync0:
@@ -73,28 +77,27 @@ Overscan:
 	JMP Frame
 	
 Dragon:
-       .byte $06                  ;     XX                                                                   
-       .byte $0F                  ;    XXXX                                                                  
-       .byte $F3                  ;XXXX  XX                                                                  
-       .byte $FE                  ;XXXXXXX                                                                   
-       .byte $0E                  ;    XXX                                                                   
-       .byte $04                  ;     X                                                                    
-       .byte $04                  ;     X                                                                    
-       .byte $1E                  ;   XXXX                                                                   
-       .byte $3F                  ;  XXXXXX                                                                  
-       .byte $7F                  ; XXXXXXX                                                                  
-       .byte $E3                  ;XXX   XX                                                                  
-       .byte $C3                  ;XX    XX                                                                  
-       .byte $C3                  ;XX    XX                                                                  
-       .byte $C7                  ;XX   XXX                                                                  
-       .byte $FF                  ;XXXXXXXX                                                                  
-       .byte $3C                  ;  XXXX                                                                    
-       .byte $08                  ;    X                                                                     
-       .byte $8F                  ;X   XXXX                                                                  
-       .byte $E1                  ;XXX    X                                                                  
-       .byte $3F                  ;  XXXXXX                                                                  
-       .byte $00   
-	
+       .byte $06                  ;     XX
+       .byte $0F                  ;    XXXX
+       .byte $F3                  ;XXXX  XX
+       .byte $FE                  ;XXXXXXX
+       .byte $0E                  ;    XXX
+       .byte $04                  ;     X
+       .byte $04                  ;     X
+       .byte $1E                  ;   XXXX
+       .byte $3F                  ;  XXXXXX
+       .byte $7F                  ; XXXXXXX
+       .byte $E3                  ;XXX   XX
+       .byte $C3                  ;XX    XX
+       .byte $C3                  ;XX    XX
+       .byte $C7                  ;XX   XXX
+       .byte $FF                  ;XXXXXXXX
+       .byte $3C                  ;  XXXX
+       .byte $08                  ;    X
+       .byte $8F                  ;X   XXXX
+       .byte $E1                  ;XXX    X
+       .byte $3F                  ;  XXXXXX
+       .byte $00
 
 	echo "----",($FFFC - *) ," bytes left"
 	

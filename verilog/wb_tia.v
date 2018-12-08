@@ -57,7 +57,7 @@ module wb_tia #(
     reg [3:0] ball_w = 1, m0_w = 1, m1_w = 1;
     reg [5:0] p0_w = 8, p1_w = 8;
     reg [1:0] p0_copies, p1_copies;
-    reg [5:0] p0_spacing, p1_spacing;
+    reg [6:0] p0_spacing, p1_spacing;
     reg inpt0 = 0, inpt1 = 0, inpt2 = 0, inpt3 = 0, inpt4 = 0, inpt5 = 0;
     reg free_cpu, do_sync, done_sync;
     
@@ -111,12 +111,12 @@ module wb_tia #(
                   m0_w <= (1 << dat_i[5:4]); 
                   case (dat_i[2:0])
                     0: begin p0_w <= 8; p0_copies <= 0; end
-                    1: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 8; end
-                    2: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 24; end
-                    3: begin p0_w <= 8; p0_copies <= 2; p0_spacing <= 8; end
-                    4: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 56; end
+                    1: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 16; end
+                    2: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 32; end
+                    3: begin p0_w <= 8; p0_copies <= 2; p0_spacing <= 16; end
+                    4: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 64; end
                     5: begin p0_w <= 16; p0_copies <= 0; end
-                    6: begin p0_w <= 8; p0_copies <= 2; p0_spacing <= 24; end
+                    6: begin p0_w <= 8; p0_copies <= 2; p0_spacing <= 32; end
                     7: begin p0_w <=32; p0_copies <= 0; end
                   endcase
                 end
@@ -124,12 +124,12 @@ module wb_tia #(
                   m1_w <= (1 << dat_i[5:4]);
                   case (dat_i[2:0])
                     0: begin p1_w <= 8; p1_copies <= 0; end
-                    1: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 8; end
-                    2: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 24; end
-                    3: begin p1_w <= 8; p1_copies <= 2; p1_spacing <= 8; end
-                    4: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 56; end
+                    1: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 16; end
+                    2: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 32; end
+                    3: begin p1_w <= 8; p1_copies <= 2; p1_spacing <= 16; end
+                    4: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 64; end
                     5: begin p1_w <= 16; p1_copies <= 0; end
-                    6: begin p1_w <= 8; p1_copies <= 2; p1_spacing <= 24; end
+                    6: begin p1_w <= 8; p1_copies <= 2; p1_spacing <= 32; end
                     7: begin p1_w <=32; p1_copies <= 0; end
                   endcase
                 end
@@ -252,8 +252,18 @@ module wb_tia #(
                   enabl && xp >= x_bl && xp < x_bl + ball_w ? colupf :
                   enam0 && xp >= x_m0 && xp < x_m0 + m0_w ? colup0 :
                   enam1 && xp >= x_m1 && xp < x_m1 + m1_w ? colup1 :
-                  xp >= x_p0 && xp < x_p0 + p0_w && grp0[refp0 ? xp - x_p0 : 7 - (xp - x_p0)] ? colup0 :
-                  xp >= x_p1 && xp < x_p1 + p1_w && grp1[refp1 ? xp - x_p1 : 7 - (xp - x_p1)] ? colup1 :
+                  (xp >= x_p0 && xp < x_p0 + p0_w || 
+                   (p0_copies > 0 && ((xp - p0_spacing) >= x_p0 && 
+                   (xp - p0_spacing) < x_p0 + p0_w)) ||
+                   (p0_copies > 1 && ((xp - (p0_spacing << 1)) >= x_p0 &&
+                   (xp - (p0_spacing << 1)) < x_p0 + p0_w))) && 
+                    grp0[refp0 ? xp - x_p0 : 7 - (xp - x_p0)] ? colup0 :
+                  (xp >= x_p1 && xp < x_p1 + p1_w ||
+                   (p1_copies > 0 && ((xp - p1_spacing) >= x_p1 &&
+                   (xp - p1_spacing) < x_p1 + p1_w)) ||
+                   (p1_copies > 1 && ((xp - (p1_spacing << 1)) >= x_p1 &&
+                   (xp - (p1_spacing << 1)) < x_p1 + p1_w))) && 
+                    grp1[refp1 ? xp - x_p1 : 7 - (xp - x_p1)] ? colup1 :
                   pf_bit ? colupf : colubk];
               else pix_data <= 0;
              

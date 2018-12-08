@@ -24,7 +24,7 @@ module mcu (
 
     reg [7:0] dummy_leds;
 
-    assign led = stall_cpu;
+    assign led = 0;
 
     // Show data fetched on leds 
     assign lcd_backlight = 1;
