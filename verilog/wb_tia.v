@@ -46,7 +46,6 @@ module wb_tia #(
     reg [6:0] colubk, colup0, colup1, colupf;
     reg vsync, vblank, wsync, enam0, enam1, enabl, vdelbl, vdelp0, vdelp1;
     reg refp0, refp1, refpf, scorepf, pf_priority;
-    reg [2:0] p0_opt, p1_opt;
     reg [7:0] grp0, grp1;
     reg [7:0] x_p0, x_p1, x_m0, x_m1, x_bl;
     reg [19:0] pf;
@@ -56,6 +55,9 @@ module wb_tia #(
     reg [4:0] audf0, audf1;
     reg m0_locked, m1_locked;
     reg [3:0] ball_w = 1, m0_w = 1, m1_w = 1;
+    reg [5:0] p0_w = 8, p1_w = 8;
+    reg [1:0] p0_copies, p1_copies;
+    reg [5:0] p0_spacing, p1_spacing;
     reg inpt0 = 0, inpt1 = 0, inpt2 = 0, inpt3 = 0, inpt4 = 0, inpt5 = 0;
     reg free_cpu, do_sync, done_sync;
     
@@ -107,11 +109,29 @@ module wb_tia #(
           'h03: ;                         // RSYNC
           'h04: begin                     // NUSIZ0 
                   m0_w <= (1 << dat_i[5:4]); 
-                  p0_opt <= dat_i[2:0]; 
+                  case (dat_i[2:0])
+                    0: begin p0_w <= 8; p0_copies <= 0; end
+                    1: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 8; end
+                    2: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 24; end
+                    3: begin p0_w <= 8; p0_copies <= 2; p0_spacing <= 8; end
+                    4: begin p0_w <= 8; p0_copies <= 1; p0_spacing <= 56; end
+                    5: begin p0_w <= 16; p0_copies <= 0; end
+                    6: begin p0_w <= 8; p0_copies <= 2; p0_spacing <= 24; end
+                    7: begin p0_w <=32; p0_copies <= 0; end
+                  endcase
                 end
           'h05: begin                     // NUSIZ1
                   m1_w <= (1 << dat_i[5:4]);
-                  p1_opt <= dat_i[2:0];
+                  case (dat_i[2:0])
+                    0: begin p1_w <= 8; p1_copies <= 0; end
+                    1: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 8; end
+                    2: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 24; end
+                    3: begin p1_w <= 8; p1_copies <= 2; p1_spacing <= 8; end
+                    4: begin p1_w <= 8; p1_copies <= 1; p1_spacing <= 56; end
+                    5: begin p1_w <= 16; p1_copies <= 0; end
+                    6: begin p1_w <= 8; p1_copies <= 2; p1_spacing <= 24; end
+                    7: begin p1_w <=32; p1_copies <= 0; end
+                  endcase
                 end
           'h06: colup0 <= dat_i[7:1];     // COLUP0
           'h07: colup1 <= dat_i[7:1];     // COLUP1
@@ -228,12 +248,13 @@ module wb_tia #(
             
             if (ypos < 240 && xpos < 320) begin // Don't draw in blank or overscan areas
               if (ypos >= 24 && ypos < 226) // Leave gap of 24 pixels at top and bottom
-                pix_data <= colors[enabl && x_bl == xp ? colupf :
-                                   enam0 && x_m0 == xp ? colup0 :
-                                   enam1 && x_m1 == xp ? colup1 :
-                                   xp >= x_p0 && xp < x_p0 + 8 && grp0[xp - x_p0] ? colup0 :
-                                   xp >= x_p1 && xp < x_p1 + 8 && grp1[xp - x_p1] ? colup1 :
-                                   pf_bit ? colupf : colubk];
+                pix_data <= colors[
+                  enabl && xp >= x_bl && xp < x_bl + ball_w ? colupf :
+                  enam0 && xp >= x_m0 && xp < x_m0 + m0_w ? colup0 :
+                  enam1 && xp >= x_m1 && xp < x_m1 + m1_w ? colup1 :
+                  xp >= x_p0 && xp < x_p0 + p0_w && grp0[refp0 ? xp - x_p0 : 7 - (xp - x_p0)] ? colup0 :
+                  xp >= x_p1 && xp < x_p1 + p1_w && grp1[refp1 ? xp - x_p1 : 7 - (xp - x_p1)] ? colup1 :
+                  pf_bit ? colupf : colubk];
               else pix_data <= 0;
              
               pix_clk <= 1;
