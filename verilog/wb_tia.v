@@ -51,6 +51,7 @@ module wb_tia #(
     reg [19:0] pf;
     reg signed [7:0] hmp0, hmp1, hmm0, hmm1, hmbl;
     reg [14:0] cx;
+    reg cx_clr;
     reg [3:0] audc0, audc1, audv0, audv1;
     reg [4:0] audf0, audf1;
     reg m0_locked, m1_locked;
@@ -77,6 +78,7 @@ module wb_tia #(
     always @(posedge clk_i) begin
         if (done_sync) do_sync <= 0;
         if (free_cpu) wsync <= 0;
+        cx_clr <= 0;
 
         // Read-only registers
         if (valid_read_cmd) begin
@@ -196,7 +198,7 @@ module wb_tia #(
                   hmm1 <= 0;  
                   hmbl <= 0; 
                 end
-          'h2c: cx <= 0;                  // CXCLR
+          'h2c: cx_clr <= 1;                  // CXCLR
           endcase
         end
 
@@ -254,6 +256,8 @@ module wb_tia #(
       pix_clk <= 0;
       reset_cursor <= 0;
 
+      if (cx_clr) cx <= 0;
+
       if (do_sync) begin
         reset_cursor <= 1;
         xpos <= 0;
@@ -269,7 +273,45 @@ module wb_tia #(
                xpos <= 0;
                ypos <= ypos + 1;
             end
-            
+
+            // Check for collisions
+            if (m0_bit) begin
+              if (p1_bit) cx[14] <= 1;
+              if (p0_bit) cx[13] <= 1;
+            end
+
+            if (m1_bit) begin
+              if (p0_bit) cx[12] <= 1; // Looks wrong
+              if (p1_bit) cx[11] <= 1;
+            end
+
+            if (p0_bit) begin
+              if (pf_bit) cx[10] <= 1;
+              if (bl_bit) cx[9] <= 1;
+            end
+
+            if (p1_bit) begin
+              if (pf_bit) cx[8] <= 1;
+              if (bl_bit) cx[7] <= 1;
+            end
+
+            if (m0_bit) begin
+              if (pf_bit) cx[6] <= 1;
+              if (bl_bit) cx[5] <= 1;
+            end
+
+            if (m1_bit) begin
+              if (pf_bit) cx[4] <= 1;
+              if (bl_bit) cx[3] <= 1;
+            end
+
+            if (bl_bit && pf_bit) cx[2] <= 1;
+
+            if (p0_bit && p1_bit) cx[1] <= 1;
+
+            if (m0_bit && m1_bit) cx[0] <= 1;
+
+            // Draw pixel     
             if (ypos < 240 && xpos < 320) begin // Don't draw in blank or overscan areas
               if (ypos >= 24 && ypos < 226) // Leave gap of 24 pixels at top and bottom
                 pix_data <= colors[
