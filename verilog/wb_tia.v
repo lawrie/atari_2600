@@ -229,8 +229,24 @@ module wb_tia #(
                 );
 
    // Drive the LCD like a CRT, racing the beam
-   wire pf_bit = pf[xpos < 160 ? (xpos >> 3) : ((refpf ? xpos - 160 : 319 - xpos) >> 3)];
+   wire pf_bit = pf[xpos < 160 ? (xpos >> 3) : ((!refpf ? xpos - 160 : 319 - xpos) >> 3)];
    wire [7:0] xp = (xpos >> 1);
+   wire p0_bit = (xp >= x_p0 && xp < x_p0 + p0_w ||
+                   (p0_copies > 0 && ((xp - p0_spacing) >= x_p0 &&
+                   (xp - p0_spacing) < x_p0 + p0_w)) ||
+                   (p0_copies > 1 && ((xp - (p0_spacing << 1)) >= x_p0 &&
+                   (xp - (p0_spacing << 1)) < x_p0 + p0_w))) &&
+                    grp0[refp0 ? (xp - x_p0) >> p0_scale  : 7 - ((xp - x_p0) >> p0_scale)];
+   wire p1_bit = (xp >= x_p1 && xp < x_p1 + p1_w ||
+                   (p1_copies > 0 && ((xp - p1_spacing) >= x_p1 &&
+                   (xp - p1_spacing) < x_p1 + p1_w)) ||
+                   (p1_copies > 1 && ((xp - (p1_spacing << 1)) >= x_p1 &&
+                   (xp - (p1_spacing << 1)) < x_p1 + p1_w))) &&
+                    grp1[refp1 ? (xp - x_p1) >> p1_scale : 7 - ((xp - x_p1) >> p1_scale)];
+   wire bl_bit = enabl && xp >= x_bl && xp < x_bl + ball_w;
+   wire m0_bit = enam0 && xp >= x_m0 && xp < x_m0 + m0_w;
+   wire m1_bit = enam1 && xp >= x_m1 && xp < x_m1 + m1_w;
+   wire [6:0] pf_color = (scorepf ? (xp < 160 ? colup0 : colup1) :  colupf);
 
    always @(posedge clk_i) begin
       free_cpu <= 0;
@@ -257,23 +273,13 @@ module wb_tia #(
             if (ypos < 240 && xpos < 320) begin // Don't draw in blank or overscan areas
               if (ypos >= 24 && ypos < 226) // Leave gap of 24 pixels at top and bottom
                 pix_data <= colors[
-                  enabl && xp >= x_bl && xp < x_bl + ball_w ? colupf :
-                  enam0 && xp >= x_m0 && xp < x_m0 + m0_w ? colup0 :
-                  enam1 && xp >= x_m1 && xp < x_m1 + m1_w ? colup1 :
-                  pf_priority && pf_bit ? (scorepf ? (xp < 160 ? colup0 : colup1) : colupf) :
-                  (xp >= x_p0 && xp < x_p0 + p0_w || 
-                   (p0_copies > 0 && ((xp - p0_spacing) >= x_p0 && 
-                   (xp - p0_spacing) < x_p0 + p0_w)) ||
-                   (p0_copies > 1 && ((xp - (p0_spacing << 1)) >= x_p0 &&
-                   (xp - (p0_spacing << 1)) < x_p0 + p0_w))) && 
-                    grp0[refp0 ? (xp - x_p0) >> p0_scale : 7 - ((xp - x_p0) >> p0_scale)] ? colup0 :
-                  (xp >= x_p1 && xp < x_p1 + p1_w ||
-                   (p1_copies > 0 && ((xp - p1_spacing) >= x_p1 &&
-                   (xp - p1_spacing) < x_p1 + p1_w)) ||
-                   (p1_copies > 1 && ((xp - (p1_spacing << 1)) >= x_p1 &&
-                   (xp - (p1_spacing << 1)) < x_p1 + p1_w))) && 
-                    grp1[refp1 ? (xp - x_p1) >> p1_scale : 7 - ((xp - x_p1) >> p1_scale)] ? colup1 :
-                  pf_bit ? (scorepf ? (xp < 160 ? colup0 : colup1) :  colupf) : colubk];
+                  bl_bit ? colupf :
+                  m0_bit ? colup0 :
+                  m1_bit ? colup1 :
+                  pf_priority && pf_bit ? pf_color :
+                  p0_bit ? colup0 :
+                  p1_bit ? colup1 :
+                  pf_bit ? pf_color : colubk];
               else pix_data <= 0;
              
               pix_clk <= 1;
