@@ -84,14 +84,14 @@ module wb_tia #(
         if (valid_read_cmd) begin
           dat_o <= 0;
           case (adr_i)
-          'h00: dat_o <= cx[14:13];       // CXM0P
-          'h01: dat_o <= cx[12:11];       // CXM1P
-          'h02: dat_o <= cx[10:9];        // CXP0FB
-          'h03: dat_o <= cx[8:7];         // CXP1FB
-          'h04: dat_o <= cx[6:5];         // CXM0FB
-          'h05: dat_o <= cx[4:3];         // CXM1FB
-          'h06: dat_o <= cx[2];           // CXBLPF
-          'h07: dat_o <= cx[1:0];         // CXPPMM
+          'h00: dat_o <= cx[14:13] << 6;       // CXM0P
+          'h01: dat_o <= cx[12:11] << 6;       // CXM1P
+          'h02: dat_o <= cx[10:9] << 6;        // CXP0FB
+          'h03: dat_o <= cx[8:7] << 6;         // CXP1FB
+          'h04: dat_o <= cx[6:5] << 6;         // CXM0FB
+          'h05: dat_o <= cx[4:3] << 6;         // CXM1FB
+          'h06: dat_o <= cx[2] << 7;           // CXBLPF
+          'h07: dat_o <= cx[1:0] << 6;         // CXPPMM
           'h08: dat_o <= inpt0 << 7;      // INPT0
           'h09: dat_o <= inpt1 << 7;      // INPT1
           'h0a: dat_o <= inpt2 << 7;      // INPT2
@@ -214,7 +214,7 @@ module wb_tia #(
    wire       busy;
    reg [15:0] pix_data;
    wire       blank_busy = !(&busy_counter);
-   reg [7:0]  busy_counter = 0;
+   reg [2:0]  busy_counter = 0;
 
    // ILI9341 LCD 8-bit parallel interface
    ili9341 lcd (
