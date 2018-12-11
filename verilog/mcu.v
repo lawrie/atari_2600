@@ -19,7 +19,9 @@ module mcu (
     output lcd_write_edge,
     output lcd_backlight,
 
-    input [7:0] BUTTONS
+    input [7:0] BUTTONS,
+    output AUDIO_LEFT,
+    output AUDIO_RIGHT
 );
 
     reg [7:0] dummy_leds;
@@ -143,6 +145,8 @@ module mcu (
         .dat_o(tia_dat_o),
         .buttons(buttons),
         .leds(dummy_leds),
+        .audio_left(AUDIO_LEFT),
+        .audio_right(AUDIO_RIGHT),
         .stall_cpu(stall_cpu),
         .nreset(lcd_nreset),
         .cmd_data(lcd_cmd_data),

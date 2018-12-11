@@ -4,6 +4,7 @@ module ili9341 (
            output reg       nreset,
            output reg       cmd_data, // 1 => Data, 0 => Command
            output reg       write_edge, // Write signal on rising edge
+           output           read_edge, // Read signal on rising edge
            output reg [7:0] dout,
 
            input            reset_cursor,
@@ -12,161 +13,130 @@ module ili9341 (
            output           busy
            );
 
+  localparam CD_DATA = 1'b1;
+  localparam CD_CMD  = 1'b0;
+
    parameter  clk_freq = 16000000;
    parameter  tx_clk_freq = 16000000;
    localparam tx_clk_div = (clk_freq / tx_clk_freq) - 1;
 
    localparam sec_per_tick = (1.0 / tx_clk_freq);
-   localparam ms120 = 0.120 / sec_per_tick;
-   localparam ms50  = 0.050 / sec_per_tick;
-   localparam ms5   = 0.005 / sec_per_tick;
+   localparam ms120 = $rtoi(0.120 / sec_per_tick);
+   localparam ms50  = $rtoi(0.050 / sec_per_tick);
+   localparam ms10   = $rtoi(0.005 / sec_per_tick);
+   localparam ms5   = $rtoi(0.005 / sec_per_tick);
+   localparam ms500 = $rtoi(0.500 / sec_per_tick);
 
    // Init Sequence Data (based upon
    // https://github.com/thekroko/ili9341_fpga/blob/master/tft_ili9341.sv)
-   localparam INIT_SEQ_LEN = 86;
-   reg [10:0] init_seq_counter = 11'b0;
+   localparam INIT_SEQ_LEN = 20;
+   reg [4:0] init_seq_counter = 11'b0;
    reg [8:0] INIT_SEQ [0:INIT_SEQ_LEN-1];
 
    localparam CURSOR_SEQ_LEN = 11;
-   reg [10:0] cursor_seq_counter = 11'b0;
+   reg [4:0] cursor_seq_counter = 11'b0;
    reg [8:0] CURSOR_SEQ [0:CURSOR_SEQ_LEN-1];
 
+   localparam ILI9341_SOFTRESET      = 8'h01;
+   localparam ILI9341_SLEEPIN        = 8'h10;
+   localparam ILI9341_SLEEPOUT       = 8'h11;
+   localparam ILI9341_NORMALDISP     = 8'h13;
+   localparam ILI9341_INVERTOFF      = 8'h20;
+   localparam ILI9341_INVERTON       = 8'h21;
+   localparam ILI9341_GAMMASET       = 8'h26;
+   localparam ILI9341_DISPLAYOFF     = 8'h28;
+   localparam ILI9341_DISPLAYON      = 8'h29;
+   localparam ILI9341_COLADDRSET     = 8'h2A;
+   localparam ILI9341_PAGEADDRSET    = 8'h2B;
+   localparam ILI9341_MEMORYWRITE    = 8'h2C;
+   localparam ILI9341_PIXELFORMAT    = 8'h3A;
+   localparam ILI9341_FRAMECONTROL   = 8'hB1;
+   localparam ILI9341_DISPLAYFUNC    = 8'hB6;
+   localparam ILI9341_ENTRYMODE      = 8'hB7;
+   localparam ILI9341_POWERCONTROL1  = 8'hC0;
+   localparam ILI9341_POWERCONTROL2  = 8'hC1;
+   localparam ILI9341_VCOMCONTROL1   = 8'hC5;
+   localparam ILI9341_VCOMCONTROL2   = 8'hC7;
+   localparam ILI9341_MEMCONTROL     = 8'h36;
+   localparam ILI9341_MADCTL         = 8'h36;
+
+   // below 3-bits control MCU -> LCD memory read/write direction
+   localparam ILI9341_MADCTL_MY  = 8'h80;  // row address order
+   localparam ILI9341_MADCTL_MX  = 8'h40;  // column address order
+   localparam ILI9341_MADCTL_MV  = 8'h20;  // row/column exchange
+
+   localparam ILI9341_MADCTL_ML  = 8'h10;  // vertical refresh order (flip vertical) (set = bottom-to-top)
+   localparam ILI9341_MADCTL_RGB = 8'h00;  // RGB bit ordering
+   localparam ILI9341_MADCTL_BGR = 8'h08;  // BGR bit ordering
+   localparam ILI9341_MADCTL_MH  = 8'h04;  // horizontal refresh order (flip horizontal)
+
    initial begin
-      // Turn off Display
-      INIT_SEQ[0] <= {1'b0, 8'h28};
+      INIT_SEQ[0] <= { CD_CMD, ILI9341_DISPLAYOFF };
 
-      // Init (??)
-      INIT_SEQ[1] <= {1'b0, 8'hCF};
-      INIT_SEQ[2] <= {1'b1, 8'h00};
-      INIT_SEQ[3] <= {1'b1, 8'hC3};
-      INIT_SEQ[4] <= {1'b1, 8'h30};
+      // Set the GVDD level, which is a reference level for the VCOM level and the grayscale voltage level.
+      INIT_SEQ[1] <= { CD_CMD, ILI9341_POWERCONTROL1 };
+      INIT_SEQ[2] <= { CD_DATA, 8'h23 };  // 4.6v GVDD
 
-      INIT_SEQ[5] <= {1'b0, 8'hED};
-      INIT_SEQ[6] <= {1'b1, 8'h64};
-      INIT_SEQ[7] <= {1'b1, 8'h03};
-      INIT_SEQ[8] <= {1'b1, 8'h12};
-      INIT_SEQ[9] <= {1'b1, 8'h81};
+      //Sets the factor used in the step-up circuits.
+      INIT_SEQ[3] <= { CD_CMD, ILI9341_POWERCONTROL2 };
+      INIT_SEQ[4] <= { CD_DATA, 8'h10 };  // 0 -> AVDD  = VCI*2, VGH = VCI*7, VGL = -VCI*4
 
-      INIT_SEQ[10] <= {1'b0, 8'hE8};
-      INIT_SEQ[11] <= {1'b1, 8'h85};
-      INIT_SEQ[12] <= {1'b1, 8'h10};
-      INIT_SEQ[13] <= {1'b1, 8'h79};
+      // this value was previously being set to 3D20, values below are from adafruit lib
+      // Set VMH and VML voltages
+      INIT_SEQ[5]  <= { CD_CMD, ILI9341_VCOMCONTROL1 };
+      INIT_SEQ[6]  <= { CD_DATA, 8'h2b };  // VMH = 3.775v   (original values were 4.225 and -1.7v)
+      INIT_SEQ[7] <= { CD_DATA, 8'h2b };  // VML = -1.425v
 
-      INIT_SEQ[14] <= {1'b0, 8'hCB};
-      INIT_SEQ[15] <= {1'b1, 8'h39};
-      INIT_SEQ[16] <= {1'b1, 8'h2C};
-      INIT_SEQ[17] <= {1'b1, 8'h00};
-      INIT_SEQ[18] <= {1'b1, 8'h34};
-      INIT_SEQ[19] <= {1'b1, 8'h02};
+      //  Set the VCOM offset voltage.
+      INIT_SEQ[8] <= { CD_CMD, ILI9341_VCOMCONTROL2 };
+      INIT_SEQ[9] <= { CD_DATA, 8'hc0 };  // C0 = no offset - ie. VCOMH = VMH, VCOML = VML
 
-      INIT_SEQ[20] <= {1'b0, 8'hF7};
-      INIT_SEQ[21] <= {1'b1, 8'h20};
+      // see register descriptions above
+      INIT_SEQ[10] <= { CD_CMD, ILI9341_MEMCONTROL };
+      INIT_SEQ[11] <= { CD_DATA,  ILI9341_MADCTL_BGR | ILI9341_MADCTL_MV | ILI9341_MADCTL_MX | ILI9341_MADCTL_MY  };  // BGR ordering, flip vertical
 
-      INIT_SEQ[22] <= {1'b0, 8'hEA};
-      INIT_SEQ[23] <= {1'b1, 8'h00};
-      INIT_SEQ[24] <= {1'b1, 8'h00};
+      INIT_SEQ[12] <= { CD_CMD, ILI9341_PIXELFORMAT };
+      INIT_SEQ[13] <= { CD_DATA, 8'h55 };  // 16 bits-per-pixel both MCU and display
 
-      // Power Control
-      INIT_SEQ[25] <= {1'b0, 8'hC0};
-      INIT_SEQ[26] <= {1'b1, 8'h22};
+      // frame rate control
+      INIT_SEQ[14] <= { CD_CMD, ILI9341_FRAMECONTROL };
+      INIT_SEQ[15] <= { CD_DATA, 8'h00 };  // divider = 00 = fosc (ie. no divider) - used when "normal mode"
+      INIT_SEQ[16] <= { CD_DATA, 8'h1B };  // RTNA = 1B = 70 fps (default)
 
-      INIT_SEQ[27] <= {1'b0, 8'hC1};
-      INIT_SEQ[28] <= {1'b1, 8'h11};
+      INIT_SEQ[17] <= { CD_CMD,  ILI9341_ENTRYMODE };
+      INIT_SEQ[18] <= { CD_DATA, 8'h07 };  // deep standby off, disable low voltage detection, display output gates 0-320 active in normal mode
 
-      // VCOM control
-      INIT_SEQ[29] <= {1'b0, 8'hC5};
-      INIT_SEQ[30] <= {1'b1, 8'h3d};
-      INIT_SEQ[31] <= {1'b1, 8'h20};
-
-      // VCOM contrl 2
-      INIT_SEQ[32] <= {1'b0, 8'hC7};
-      INIT_SEQ[33] <= {1'b1, 8'hAA};
-
-      // Memory Access Control
-      INIT_SEQ[34] <= {1'b0, 8'h36};
-      INIT_SEQ[35] <= {1'b1, 8'ha8};
-      INIT_SEQ[36] <= {1'b0, 8'h3A};
-      INIT_SEQ[37] <= {1'b1, 8'h55};
-
-      // Frame Rate
-      INIT_SEQ[38] <= {1'b0, 8'hB1};
-      INIT_SEQ[39] <= {1'b1, 8'h00};
-      INIT_SEQ[40] <= {1'b1, 8'h13};
-
-      // Display function control
-      INIT_SEQ[41] <= {1'b0, 8'hB6};
-      INIT_SEQ[42] <= {1'b1, 8'h0A};
-      INIT_SEQ[43] <= {1'b1, 8'hA2};
-
-      INIT_SEQ[44] <= {1'b0, 8'hF6};
-      INIT_SEQ[45] <= {1'b1, 8'h01};
-      INIT_SEQ[46] <= {1'b1, 8'h30};
-
-      // Gamma function disable
-      INIT_SEQ[47] <= {1'b0, 8'hF2};
-      INIT_SEQ[48] <= {1'b1, 8'h00};
-
-      // Gamma curve selected
-      INIT_SEQ[49] <= {1'b0, 8'h26};
-      INIT_SEQ[50] <= {1'b1, 8'h01};
-
-      //Set Gamma
-      INIT_SEQ[51] <= {1'b0, 8'hE0};
-      INIT_SEQ[52] <= {1'b1, 8'h0F};
-      INIT_SEQ[53] <= {1'b1, 8'h3F};
-      INIT_SEQ[54] <= {1'b1, 8'h2F};
-      INIT_SEQ[55] <= {1'b1, 8'h0C};
-      INIT_SEQ[56] <= {1'b1, 8'h10};
-      INIT_SEQ[57] <= {1'b1, 8'h0A};
-      INIT_SEQ[58] <= {1'b1, 8'h53};
-      INIT_SEQ[59] <= {1'b1, 8'hD5};
-      INIT_SEQ[60] <= {1'b1, 8'h40};
-      INIT_SEQ[61] <= {1'b1, 8'h0A};
-      INIT_SEQ[62] <= {1'b1, 8'h13};
-      INIT_SEQ[63] <= {1'b1, 8'h03};
-      INIT_SEQ[64] <= {1'b1, 8'h08};
-      INIT_SEQ[65] <= {1'b1, 8'h03};
-      INIT_SEQ[66] <= {1'b1, 8'h00};
-
-      //Set Gamma
-      INIT_SEQ[67] <= {1'b0, 8'hE1};
-      INIT_SEQ[68] <= {1'b1, 8'h00};
-      INIT_SEQ[69] <= {1'b1, 8'h00};
-      INIT_SEQ[70] <= {1'b1, 8'h10};
-      INIT_SEQ[71] <= {1'b1, 8'h03};
-      INIT_SEQ[72] <= {1'b1, 8'h0F};
-      INIT_SEQ[73] <= {1'b1, 8'h05};
-      INIT_SEQ[74] <= {1'b1, 8'h2C};
-      INIT_SEQ[75] <= {1'b1, 8'hA2};
-      INIT_SEQ[76] <= {1'b1, 8'h3F};
-      INIT_SEQ[77] <= {1'b1, 8'h05};
-      INIT_SEQ[78] <= {1'b1, 8'h0E};
-      INIT_SEQ[79] <= {1'b1, 8'h0C};
-      INIT_SEQ[80] <= {1'b1, 8'h37};
-      INIT_SEQ[81] <= {1'b1, 8'h3C};
-      INIT_SEQ[82] <= {1'b1, 8'h0F};
-
-      // Brightness
-      INIT_SEQ[83] <= {1'b0, 8'h51};
-      INIT_SEQ[84] <= {1'b1, 8'hFF};
-
-      INIT_SEQ[85] <= {1'b0, 8'h29}; // Enable Display
+      INIT_SEQ[19] <= { CD_CMD, ILI9341_SLEEPOUT };
 
       // Column Address
-      CURSOR_SEQ[0] <= {1'b0, 8'h2A};
-      CURSOR_SEQ[1] <= {1'b1, 8'h00};
-      CURSOR_SEQ[2] <= {1'b1, 8'h00};
-      CURSOR_SEQ[3] <= {1'b1, 8'h01};
-      CURSOR_SEQ[4] <= {1'b1, 8'h3F};
+      // This command is used to define area of frame memory
+      // where MCU can access. This command makes no change
+      // on the other  driver  status.  The  values  of
+      // SC[15:0]  and  EC[15:0]  are  referred  when  RAMWR
+      // command  comes.  Each value represents one column
+      // line in the Frame Memory.
+      // SC = start column, EC = end column
+      CURSOR_SEQ[0] <= {CD_CMD, ILI9341_COLADDRSET };
+      CURSOR_SEQ[1] <= {CD_DATA, 8'h00}; // SC[15:8]
+      CURSOR_SEQ[2] <= {CD_DATA, 8'h00}; // SC[7:0]   // SC = 0
+      CURSOR_SEQ[3] <= {CD_DATA, 8'h01}; // EC[15:8]
+      CURSOR_SEQ[4] <= {CD_DATA, 8'h3F}; // EC[7:0]   // 13F = 319
 
       // Page Address
-      CURSOR_SEQ[5] <= {1'b0, 8'h2B};
-      CURSOR_SEQ[6] <= {1'b1, 8'h00};
-      CURSOR_SEQ[7] <= {1'b1, 8'h00};
-      CURSOR_SEQ[8] <= {1'b1, 8'h00};
-      CURSOR_SEQ[9] <= {1'b1, 8'hEF};
+      // This command is used to define area of frame memory
+      // where MCU can access. This command makes no change on the
+      // other  driver  status.  The  values  of  SP  [15:0]  and  EP
+      //  [15:0]  are  referred  when  RAMWR  command  comes.  Each
+      // value represents one Page line in the Frame Memory.
+      CURSOR_SEQ[5] <= {CD_CMD, ILI9341_PAGEADDRSET };
+      CURSOR_SEQ[6] <= {CD_DATA, 8'h00};
+      CURSOR_SEQ[7] <= {CD_DATA, 8'h00};  // start page = 0
+      CURSOR_SEQ[8] <= {CD_DATA, 8'h00};
+      CURSOR_SEQ[9] <= {CD_DATA, 8'hEF};  // end page = EF = 239 ;
 
-      CURSOR_SEQ[10] <= {1'b0, 8'h2C}; // Start Memory-Write
+      CURSOR_SEQ[10] <= {CD_CMD, ILI9341_MEMORYWRITE}; // Start Memory-Write
+
+
 
       dout <= 0;
       write_edge <= 0;
@@ -177,8 +147,9 @@ module ili9341 (
    parameter NOT_RESET = 5'd1;
    parameter WAKEUP = 5'd2;
    parameter INIT = 5'd3;
-   parameter READY = 5'd4;
-   parameter CURSOR = 5'd5;
+   parameter INIT_FIN = 5'd4;
+   parameter READY = 5'd5;
+   parameter CURSOR = 5'd6;
 
    reg [2:0] state = RESET;
 
@@ -186,7 +157,7 @@ module ili9341 (
    parameter TX_DATA_READY = 1'd1;
    reg       tx_state = TX_IDLE;
 
-   reg [19:0] delay_ticks = 0;
+   reg [23:0] delay_ticks = 0;
 
    parameter PIX_IDLE = 1'd0;
    parameter PIX_SEND = 1'd1;
@@ -197,111 +168,120 @@ module ili9341 (
 
    always @(posedge clk_16MHz) begin
 
-      if (!resetn) state <= RESET;
-      else begin 
+     case (tx_state)
+        TX_IDLE : begin
+           write_edge <= 0;
+        end
+        TX_DATA_READY : begin
+           write_edge <= 1;
+           tx_state <= TX_IDLE;
+        end
+     endcase
 
-         case (tx_state)
-            TX_IDLE : begin
-               write_edge <= 0;
-            end
-            TX_DATA_READY : begin
-               write_edge <= 1;
-               tx_state <= TX_IDLE;
-            end
-         endcase
+     if (delay_ticks != 0) begin
+        delay_ticks <= delay_ticks - 1;
+     end else begin
 
-         if (delay_ticks != 0) begin
+        case (state)
+           RESET : begin
+              nreset <= 0;
+              dout <= 0;
+              write_edge <= 0;
+              cmd_data <= 0;
+              delay_ticks <= ms10;
 
-            delay_ticks <= delay_ticks - 1;
+              state <= NOT_RESET;
+           end
 
-         end else begin
+           NOT_RESET : begin
+              nreset <= 1;
+              state <= WAKEUP;
+              delay_ticks <= ms120;
+           end
 
-            case (state)
-               RESET : begin
-                  nreset <= 0;
-                  dout <= 0;
-                  write_edge <= 0;
-                  cmd_data <= 0;
-                  delay_ticks = ms5;
+           WAKEUP : begin
+              if (tx_state == TX_IDLE) begin
+                 cmd_data <= 0;
+                 dout <= 8'h01;  // SOFTWARE RESET
+                 tx_state <= TX_DATA_READY;
+                 init_seq_counter <= 0;
+                 state <= INIT;
+                 delay_ticks <= ms5;
+              end
+           end
 
-                  state <= NOT_RESET;
-               end
+           INIT: begin
+              if (init_seq_counter < INIT_SEQ_LEN) begin
+                 if (tx_state == TX_IDLE) begin
+                    cmd_data <= INIT_SEQ[init_seq_counter][8];
+                    dout <= INIT_SEQ[init_seq_counter][7:0];
 
-               NOT_RESET : begin
-                  nreset <= 1;
-                  state <= WAKEUP;
-                  delay_ticks <= ms120;
-               end
+                    init_seq_counter <= init_seq_counter + 1;
+                    tx_state <= TX_DATA_READY;
+                 end
+              end else begin
+                 state <= INIT_FIN;
+                 delay_ticks <= ms120;
+              end
+           end
 
-               WAKEUP : begin
-                  if (tx_state == TX_IDLE) begin
-                     cmd_data <= 0;
-                     dout <= 8'h11;
-                     tx_state <= TX_DATA_READY;
-                     init_seq_counter <= 0; 
-                     state <= INIT;
-                     delay_ticks <= ms5;
-                  end
-               end
+           // turn display on
+           // wait 500 ms
+           INIT_FIN: begin
+              if (tx_state == TX_IDLE) begin
+                cmd_data <= 0;
+                dout <= ILI9341_DISPLAYON;
+                tx_state <= TX_DATA_READY;
+                state <= CURSOR;
+                delay_ticks <= ms500;
+              end
+           end
 
-               INIT: begin
-                  if (init_seq_counter < INIT_SEQ_LEN) begin
-                     if (tx_state == TX_IDLE) begin
-                        cmd_data <= INIT_SEQ[init_seq_counter][8];
-                        dout <= INIT_SEQ[init_seq_counter][7:0];
+           CURSOR: begin
+              if (cursor_seq_counter < CURSOR_SEQ_LEN) begin
+                 if (tx_state == TX_IDLE) begin
+                    cmd_data <= CURSOR_SEQ[cursor_seq_counter][8];
+                    dout <= CURSOR_SEQ[cursor_seq_counter][7:0];
 
-                        init_seq_counter <= init_seq_counter + 1;
-                        tx_state <= TX_DATA_READY;
-                     end
-                  end else begin
-                     state <= CURSOR;
-                     delay_ticks <= ms50;
-                  end
-               end
+                    cursor_seq_counter <= cursor_seq_counter + 1;
+                    tx_state <= TX_DATA_READY;
+                 end
+              end else begin
+                 state <= READY;
+                 cursor_seq_counter <= 0;
+              end
+           end
 
-               CURSOR: begin
-                  if (cursor_seq_counter < CURSOR_SEQ_LEN) begin
-                     if (tx_state == TX_IDLE) begin
-                        cmd_data <= CURSOR_SEQ[cursor_seq_counter][8];
-                        dout <= CURSOR_SEQ[cursor_seq_counter][7:0];
+           READY : begin
 
-                        cursor_seq_counter <= cursor_seq_counter + 1;
-                        tx_state <= TX_DATA_READY;
-                     end
-                  end else begin
-                     state <= READY;
-                     cursor_seq_counter <= 0;
-                  end
-               end
+              case (pix_state)
 
-               READY : begin
+                PIX_IDLE : begin
+                   if (reset_cursor == 1) begin
+                      state <= CURSOR;
+                   end else if (pix_clk == 1 && tx_state == TX_IDLE) begin
+                      cmd_data <= 1;
+                      dout <= pix_data[15:8];
+                      tx_state <= TX_DATA_READY;
+                      pix_state <= PIX_SEND;
+                   end
+                end
 
-                  case (pix_state)
+                PIX_SEND: begin
+                   if (tx_state == TX_IDLE) begin
+                      cmd_data <= 1;
+                      dout <= pix_data[7:0];
+                      tx_state <= TX_DATA_READY;
+                      pix_state <= PIX_IDLE;
+                   end
+                end
+              endcase
+           end
+        endcase
+     end
 
-                    PIX_IDLE : begin
-                       if (reset_cursor == 1) begin
-                          state <= CURSOR;
-                       end else if (pix_clk == 1 && tx_state == TX_IDLE) begin
-                          cmd_data <= 1;
-                          dout <= pix_data[15:8];
-                          tx_state <= TX_DATA_READY;
-                          pix_state <= PIX_SEND;
-                       end
-                    end
+     if (!resetn) state <= RESET;
 
-                    PIX_SEND: begin
-                       if (tx_state == TX_IDLE) begin
-                          cmd_data <= 1;
-                          dout <= pix_data[7:0];
-                          tx_state <= TX_DATA_READY;
-                          pix_state <= PIX_IDLE;
-                       end
-                    end
-                  endcase
-               end
-            endcase
-         end
-      end
    end
 
 endmodule

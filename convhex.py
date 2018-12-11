@@ -7,5 +7,5 @@ with open(filename, 'rb') as f:
     for x in content:
         print(binascii.hexlify(x))
         i += 1
-        if i == 512:
+        if i == 4096:
             break

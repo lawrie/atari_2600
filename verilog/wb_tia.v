@@ -28,6 +28,10 @@ module wb_tia #(
     input [7:0]                     buttons,
     output [7:0]                    leds,
 
+    // audio
+    output                          audio_left,
+    output                          audio_right,
+
     // cpu control
     output                          stall_cpu
 );
@@ -202,6 +206,12 @@ module wb_tia #(
           endcase
         end
 
+        if (ypos >= 216) begin
+          enabl <= 0;
+          enam0 <= 0;
+          enam1 <= 0;
+        end
+
         ack_o <= valid_cmd;
     end
 
@@ -214,7 +224,7 @@ module wb_tia #(
    wire       busy;
    reg [15:0] pix_data;
    wire       blank_busy = !(&busy_counter);
-   reg [2:0]  busy_counter = 0;
+   reg [1:0]  busy_counter = 0;
 
    // ILI9341 LCD 8-bit parallel interface
    ili9341 lcd (
@@ -333,5 +343,35 @@ module wb_tia #(
       end
 
       if (blank_busy) busy_counter <= busy_counter + 1;
+   end
+
+   // Audio
+   wire [19:0] audio_div0 = 256 * audf0 * 
+    (audc0 == 6 || audc0 == 10 ? 31 : 
+     audc0 == 2 || audc0 == 3 ? 2 :
+     audc0 == 12 || audc0 == 13 ? 6 :
+     audc0 == 14 ? 93 : 1) ;
+
+   wire [19:0] audio_div1 = 256 * audf1 * 
+    (audc1 == 6 || audc1 == 10 ? 31 : 
+     audc1 == 2 || audc1 == 3 ? 2 :
+     audc1 == 12 || audc1 == 13 ? 6 :
+     audc1 == 14 ? 93 : 1) ;
+
+   reg [19:0] audio_left_counter, audio_right_counter;
+
+   always @(posedge clk_i) begin
+     audio_left_counter <= audio_left_counter + 1;
+     audio_right_counter <= audio_right_counter + 1;
+
+     if (audv0 > 0 && audio_left_counter >= audio_div0) begin
+       audio_left <= !audio_left;
+       audio_left_counter <= 0;
+     end
+
+     if (audv1 > 0 && audio_right_counter >= audio_div1) begin
+       audio_right <= !audio_right;
+       audio_right_counter <= 0;
+     end
    end
 endmodule
