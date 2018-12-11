@@ -36,33 +36,33 @@ Clear:
     STA COLUBK
     LDA #$0E
     STA COLUP0
-	STA COLUP1
+    STA COLUP1
     
     LDA #$E0          ; Move Ball 2 right, gets done 37 times
     STA HMBL          ; So ball X position becomes 74
     LDA #$F0          ; Move missile 0 1 right so it gets set to 37
     STA HMM0
-	LDA #$C0
-	STA HMM1
+    LDA #$C0
+    STA HMM1
     
-	LDA #80
-	STA Bat0_Y
-	CLC
-	ADC #40
+    LDA #80
+    STA Bat0_Y
+    CLC
+    ADC #40
     STA Bat0_E
     
     LDA #80
-	STA Bat1_Y
-	CLC
-	ADC #40
+    STA Bat1_Y
+    CLC
+    ADC #40
     STA Bat1_E
     
-	LDA #80
-	STA Ball_Y
+    LDA #80
+    STA Ball_Y
 
-    lda #6
-    sta AUDC0
-    sta AUDF0
+    LDA #6
+    STA AUDC0
+    STA AUDF0
 	
     LDA #2            ; Start VBLANK
     STA VBLANK
@@ -81,10 +81,10 @@ Vsync0:
     
 Vblank0:
     STA WSYNC
-	CPY #30           ; Just 7 times for left bat
-	BPL Cont_M0
-	LDA #0
-	STA HMM0
+    CPY #30           ; Just 7 times for left bat
+    BPL Cont_M0
+    LDA #0
+    STA HMM0
     
 Cont_M0:
     STA HMOVE         ; Move ball and missiles
@@ -123,36 +123,36 @@ NoBat:
     LDA #2 
 
 NoBat1:    
-	STA ENAM1
+    STA ENAM1
     
     INY
     STA WSYNC
     CPY #192
-    BNE Picture
+    BCC Picture       ; Unsigned comparison
     
     LDA #2            ; Set VBLANK
     STA VBLANK
 
-	LDY Bat0_Y
-	LDA SWCHA         ;get both sticks
-	ASL               ;slide off up bit
-	ASL
-	ASL
-    BCS Not_Up
-        CPY #151
-        BPL Not_Up
+    LDY Bat0_Y
+    LDA SWCHA         ;get both sticks
+    ASL               ;slide off up bit
+    ASL
+    ASL
+    BCS Not_Down
+    CPY #152
+    BCS Not_Down
     INY
     INY
  
-Not_Up:
-   	ASL               ;slide off down bit
-	BCS Not_Down      ;skip if set
-        CPY #2
-        BMI Not_Down
-	DEY               ;...or, bump y
-	DEY
-    
 Not_Down:
+    ASL               ;slide off down bit
+    BCS Not_Up        ;skip if set
+    CPY #2
+    BCC Not_Up
+    DEY               ;...or, bump y
+    DEY
+    
+Not_Up:
     TYA
     STA Bat0_Y
     CLC
@@ -168,31 +168,31 @@ Not_Down:
     ASL
     ASL
     ASL
-	BCS Not_Up1        ;skip if set
-    CPY #151
-    BPL Not_Up1
-	INY               ;...or, bump Y
-	INY
-    
-Not_Up1:
-        CPY #2
-        BMI Not_Down1
-   	ASL               ;slide off down bit
-	BCS Not_Down1     ;skip if set
-	DEY               ;...or, bump y
-	DEY
+    BCS Not_Down1        ;skip if set
+    CPY #152
+    BCS Not_Down1
+    INY               ;...or, bump Y
+    INY
     
 Not_Down1:
+    ASL               ;slide off down bit
+    BCS Not_Up1
+    CPY #2
+    BCC Not_Up1     ;skip if set
+    DEY               ;...or, bump y
+    DEY
+    
+Not_Up1:
     TYA
     STA Bat1_Y
-	CLC
-	ADC #40
-	STA Bat1_E
+    CLC
+    ADC #40
+    STA Bat1_E
 	
     LDA Ball_V        ; Ball Vertical direction
-	BNE Ball_Up
-	INC Ball_Y
-	.byte $2C         ; Skip instruction
+    BNE Ball_Up
+    INC Ball_Y
+    .byte $2C         ; Skip instruction
     
 Ball_Up:
     DEC Ball_Y
@@ -203,35 +203,36 @@ Ball_Up:
     JMP Horiz
     
 Not_Top:
-     CMP #191
-     BNE Horiz
-     LDA #1
-     STA Ball_V
+    CMP #191
+    BNE Horiz
+    LDA #1
+    STA Ball_V
    
 Horiz:   
-        LDA #0
-        STA AUDV0
-	LDA Ball_H
-	BNE Ball_Left
-	LDA #$F0
-	JMP Set_Ball
+    LDA #0
+    STA AUDV0
+    LDA Ball_H
+    BNE Ball_Left
+    LDA #$F0
+    JMP Set_Ball
     
 Ball_Left
-	LDA #$10
+    LDA #$10
     
 Set_Ball:
     STA HMBL
-	STA WSYNC
-	STA HMOVE
+    STA WSYNC
+    STA HMOVE
 	
-	LDA CXM1FB
-	ASL
-	ASL
-	BCC No_Change
-	LDA Ball_H
-	LDA #1
-	STA Ball_H
-        STA AUDV0
+    LDA CXM1FB
+    ASL
+    ASL
+    BCC No_Change
+    LDA Ball_H
+    LDA #1
+    STA Ball_H
+    LDA #15
+    STA AUDV0
     
 No_Change:
     LDA CXM0FB
@@ -240,7 +241,7 @@ No_Change:
     BCC No_Change1
     LDA #0
     STA Ball_H
-    LDA #1
+    LDA #15
     STA AUDV0
     
 No_Change1:
@@ -249,8 +250,8 @@ No_Change1:
 Overscan:
     DEY
     STA WSYNC
-	STA HMCLR
-	STA CXCLR
+    STA HMCLR
+    STA CXCLR
     BNE Overscan
     JMP Frame
 		
