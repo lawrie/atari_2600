@@ -46,8 +46,8 @@ module wb_pia (
           case (adr_i)
           'h14: begin interval <= 1; reset_timer <= dat_i; end // TIM1T
           'h15: begin interval <= 8; reset_timer <= dat_i; end  // TIM8T
-          'h16: begin interval = 64; reset_timer <= dat_i; end // TIM64T
-          'h17: begin interval = 1024; reset_timer <= dat_i; end // T1024T
+          'h16: begin interval <= 64; reset_timer <= dat_i; end // TIM64T
+          'h17: begin interval <= 1024; reset_timer <= dat_i; end // T1024T
           endcase
         end
 
@@ -62,12 +62,12 @@ module wb_pia (
       if (reset_timer > 0) begin
         time_counter <= 0;
         intim <= reset_timer;
-      end if (ready) begin
+      end else if (ready) begin
         time_counter <= time_counter + 1;
       end
 
       if (time_counter == interval - 1) begin
-        //if (intim == 0) reset_interval <= 1;
+        if (intim == 0) reset_interval <= 1;
         intim <= intim - 1;
         time_counter <= 0;
       end

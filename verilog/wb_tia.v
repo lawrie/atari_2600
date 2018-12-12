@@ -110,7 +110,7 @@ module wb_tia #(
           case (adr_i) 
           'h00: begin                     // VSYNC
                    vsync <= dat_i[1]; 
-                   if (dat_i[1]) do_sync <= 1; 
+                   if (vsync == 0 & dat_i[1]) do_sync <= 1; 
                 end
           'h01: begin                     // VBLANK
                   vblank <= dat_i[1];
@@ -162,11 +162,11 @@ module wb_tia #(
           'h0d: for(i = 0; i<4; i = i + 1) pf[i] <= dat_i[4+i];   // PF0
           'h0e: for(i = 0; i<8; i = i + 1) pf[4+i] <= dat_i[7-i]; // PF1
           'h0f: for(i = 0; i<8; i = i + 1) pf[12+i] = dat_i[i];   // PF2
-          'h10: x_p0 <= xpos >= 320 ? 0 : xpos >> 1;        // RESP0
-          'h11: x_p1 <= xpos >= 320 ? 0 : xpos >> 1;        // RESP1
-          'h12: x_m0 <= xpos >= 320 ? 0 : xpos >> 1;        // RESM0
-          'h13: x_m1 <= xpos >= 320 ? 0 : xpos >> 1;        // RESM1
-          'h14: x_bl <= xpos >= 320 ? 0 : xpos >> 1;        // RESBL
+          'h10: x_p0 <= xp >= 160 ? 0 : xp;        // RESP0
+          'h11: x_p1 <= xp >= 160 ? 0 : xp;        // RESP1
+          'h12: x_m0 <= xp >= 160 ? 0 : xp;        // RESM0
+          'h13: x_m1 <= xp >= 160 ? 0 : xp;        // RESM1
+          'h14: x_bl <= xp >= 160 ? 0 : xp;        // RESBL
           'h15: audc0 <= dat_i[3:0];      // AUDC0
           'h16: audc1 <= dat_i[3:0];      // AUDC1
           'h17: audf0 <= dat_i[4:0];      // AUDF0
@@ -206,7 +206,7 @@ module wb_tia #(
           endcase
         end
 
-        if (ypos >= 216) begin
+        if (ypos < 40 || ypos >= 232) begin
           enabl <= 0;
           enam0 <= 0;
           enam1 <= 0;
@@ -322,8 +322,8 @@ module wb_tia #(
             if (m0_bit && m1_bit) cx[0] <= 1;
 
             // Draw pixel     
-            if (ypos < 240 && xpos < 320) begin // Don't draw in blank or overscan areas
-              if (ypos >= 24 && ypos < 226) // Leave gap of 24 pixels at top and bottom
+            if ( ypos >= 16 && ypos < 256 && xpos < 320) begin // Don't draw in blank or overscan areas
+              if (ypos >= 40 && ypos < 232) // Leave gap of 24 pixels at top and bottom
                 pix_data <= colors[
                   bl_bit ? colupf :
                   m0_bit ? colup0 :
@@ -335,7 +335,7 @@ module wb_tia #(
               else pix_data <= 0;
              
               pix_clk <= 1;
-           end busy_counter <= 0; // Wait 8 clock cycles as if pixel were being written
+           end else busy_counter <= 0; // Wait 8 clock cycles as if pixel were being written
               
          end else begin
             ypos <= 0;

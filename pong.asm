@@ -16,6 +16,7 @@ Bat1_Y  DS 1
 Bat1_E  DS 1
 Ball_H  DS 1
 Ball_V  DS 1
+Game    DS 1
 
     seg Code
     org $F000		
@@ -38,6 +39,9 @@ Clear:
     STA COLUP0
     STA COLUP1
     
+    LDA #$10
+    STA CTRLPF
+    
     LDA #$E0          ; Move Ball 2 right, gets done 37 times
     STA HMBL          ; So ball X position becomes 74
     LDA #$F0          ; Move missile 0 1 right so it gets set to 37
@@ -57,17 +61,25 @@ Clear:
     ADC #40
     STA Bat1_E
     
+    LDA #76
+    STA Ball_X
+    
     LDA #80
     STA Ball_Y
 
     LDA #6
     STA AUDC0
     STA AUDF0
+    STA AUDF1
+    LDA #4
+    STA AUDC1
 	
     LDA #2            ; Start VBLANK
     STA VBLANK
     
 Frame:
+    LDA #0
+    STA AUDV1
     LDA #2
     
 Vsync0:
@@ -101,8 +113,17 @@ Picture:
     CPY Ball_Y
     BNE NoBall
     LDA #2
-    
+    JMP Store_Bl
 NoBall:
+    CPY #0
+    BEQ Store_Bl
+    DEY
+    CPY Ball_Y
+    BNE No_Ball1
+    LDA #2
+No_Ball1:
+    INY 
+Store_Bl: 
     STA ENABL
     
     LDA #0
@@ -132,7 +153,19 @@ NoBat1:
     
     LDA #2            ; Set VBLANK
     STA VBLANK
+    
+    BIT INPT4
+	BMI Button_Not_Pushed
+	LDA #1
+	STY Game
+	
+Button_Not_Pushed
 
+    LDA Game
+    BNE Do_Logic
+    JMP Skip_Logic
+
+Do_Logic:
     LDY Bat0_Y
     LDA SWCHA         ;get both sticks
     ASL               ;slide off up bit
@@ -200,6 +233,8 @@ Ball_Up:
     LDA Ball_Y
     BNE Not_Top
     STA Ball_V        ; Store 0
+    LDA #15
+    STA AUDV1
     JMP Horiz
     
 Not_Top:
@@ -207,16 +242,52 @@ Not_Top:
     BNE Horiz
     LDA #1
     STA Ball_V
+    LDA #15
+    STA AUDV1
    
 Horiz:   
     LDA #0
     STA AUDV0
     LDA Ball_H
     BNE Ball_Left
+    INC Ball_X
+    LDA Ball_X
+    CMP #160
+    BNE Store_R
+    LDA #0
+    STA Ball_X
+
+    LDA #14
+    STA AUDC0
+    LDA #15
+    STA AUDV0
+    STA WSYNC
+    STA RESBL
+    STA RESM0
+    STA RESM1
+    BRK
+Store_R:
     LDA #$F0
+
     JMP Set_Ball
     
-Ball_Left
+Ball_Left:
+    DEC Ball_X
+    LDA Ball_X
+    CMP #0
+    BNE Store_L
+    LDA #160
+    STA Ball_X
+    LDA #14
+    STA AUDC0
+    LDA #15
+    STA AUDV0
+    STA WSYNC
+    STA RESBL
+    STA RESM0
+    STA RESM1
+    BRK
+Store_L:    
     LDA #$10
     
 Set_Ball:
@@ -245,6 +316,7 @@ No_Change:
     STA AUDV0
     
 No_Change1:
+Skip_Logic:
 	
     LDY #29           ; Another 29 Overscan lines
 Overscan:
