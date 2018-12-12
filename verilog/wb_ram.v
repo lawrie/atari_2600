@@ -25,13 +25,6 @@ module wb_ram #(
     wire valid_write_cmd = valid_cmd && we_i;
     wire valid_read_cmd = valid_cmd && !we_i;
 
-    integer j;
-    initial begin 
-        for (j = 0; j < 512; j = j + 1) begin 
-           ram[j] <= 0; 
-        end
-    end
-
     always @(posedge clk_i) begin
         if (valid_read_cmd || WB_ALWAYS_READ) begin
             dat_o <= ram[adr_i];

@@ -356,7 +356,7 @@ always @(posedge clk)
 
 parameter
         ZEROPAGE  = 8'h00,
-        STACKPAGE = 8'h01;
+        STACKPAGE = 8'h00;
 
 always @*
     case( state )
