@@ -19,6 +19,10 @@ module wb_pia (
     input                           ready
 );
 
+    // Button numbers
+    localparam UP = 4, RIGHT = 7, LEFT = 6, DOWN = 5,
+               A = 3, B = 1, X = 0, Y = 2;
+
     wire valid_cmd = !rst_i && stb_i;
     wire valid_write_cmd = valid_cmd && we_i;
     wire valid_read_cmd = valid_cmd && !we_i;
@@ -36,7 +40,7 @@ module wb_pia (
           case (adr_i) 
           'h00: dat_o <= buttons; // SWCHA
           'h01: ; // SWACNT
-          'h02: ; // SWCHB
+          'h02: dat_o <= 'hfc | (buttons[X] << 1) | buttons[Y] ; // SWCHB
           'h03: ; // SWBCNT
           'h04: dat_o <= intim; // INTIM
           endcase
