@@ -56,14 +56,19 @@ module wb_pia (
         ack_o <= valid_cmd;
     end
 
+    reg [4:0] pixel_counter;
+
     always @(posedge clk_i) begin
+      pixel_counter <= pixel_counter + 1;
       reset_interval <= 0;
 
       if (reset_timer > 0) begin
         time_counter <= 0;
+        pixel_counter <= 0;
         intim <= reset_timer;
-      end else if (ready) begin
+	end else if (pixel_counter == 23) begin
         time_counter <= time_counter + 1;
+        pixel_counter <= 0;
       end
 
       if (time_counter == interval - 1) begin
