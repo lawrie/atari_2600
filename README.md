@@ -1,6 +1,8 @@
 # atari_2600
 TinyFPGA BX implementation of Atari 2600 for the FPGC LCD games console
 
+![Adventure on TinyFPGA BX Field Programmable Games Console](https://discourse.tinyfpga.com/uploads/default/optimized/1X/8485400779b614afa54cd73240bf407e695ea9db_1_690x388.jpeg "Advenure on TinyFPGA BX Field Programmable Games Console")
+
 ## Hardware
 
 This implementation runs on the [TinyFPGA BX Field Programmable Games Console](https://github.com/Fabien-Chouteau/field-programmable-game-console).
