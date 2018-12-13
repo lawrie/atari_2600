@@ -196,11 +196,11 @@ TidyUp:
                                                                                                                    
 ;Position Sprite X horizontally.
 PosSpriteX:                                                                                   
-       LDY    #$02                ;Start with 10 clock cycles (to avoid HBLANK)                              ;2    
+       LDY    #$04                ;Start with 10 clock cycles (to avoid HBLANK)                              ;2    
        SEC                        ;Divide the Coordinate.                                                    ;2    
 PosSpriteX_1:
        INY                        ;      Wanted by Fifteen I.E.                                              ;2    
-       SBC    #$0F                ;      Get Course Horizontal                                               ;2    
+       SBC    #$0A                ;      Get Course Horizontal                                               ;2    
        BCS    PosSpriteX_1        ;      Value (In Multiples of 5 Clock Cycles                               ;2    
                                   ;      (Therefore giving 15 Color Cycles)                                      
        EOR    #$FF                ;Flip remanter to positive value (inverted).                               ;2    
@@ -214,7 +214,7 @@ PosSpriteX_1:
 PosSpriteX_2:                                                                                                                   
        DEY                        ;Count down the color                                                      ;2    
        BPL    PosSpriteX_2        ;      cycles (these are 5 machine/15 color cycles).                       ;2    
-                                                                                                                   
+       NOP                                                                                                                   
        STA    RESP0,X             ;Reset the sprite, thus positioning it coursely.                           ;4    
        STA    HMP0,X              ;Set horizontal (fine) motion of sprite.                                   ;4    
        RTS                                                                                                   ;6    
@@ -2788,7 +2788,7 @@ LFFDD:       .byte $B3,$00,                  <MagnetCurr,>MagnetCurr,      <Magn
 LFFE6:       .byte $BC,$00,                  <NullCurr,>NullCurr,          <NullStates,>NullStates,          $00,$00,$00      ;#12 Null               Black            A2               
                                                                                                                    
 ;Not Used                                                                                                          
-LFFEF: .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00                                                     
+LFFEF: .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00                                                     
                                                                                                                    
 ;6502 Vectors (Not Used??                                                                                          
 LFFFA:  .byte $00,$F0                                                                                               

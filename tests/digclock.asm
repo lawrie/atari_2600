@@ -263,29 +263,18 @@ blow1	sta  WSYNC	;much here so I didn't go for anything fancy since
 	dex		;this is just a demo. This wouldn't be the way you 
 	bpl  blow1	;do things in a game, but it works for this.
 	sta  WSYNC
-	nop		;See... you'd never do something weenie like this
+	repeat 24		;See... you'd never do something weenie like this
 	nop		;in a real programme
-	nop		;
-	nop		;
-	nop		;but when I was experimenting with this programme
-	nop		;I just had a whole bunch of ";nop" lines here
-	nop		;and I removed the ";" until I got the spacing more
-	nop		;or less where I wanted it
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
+	repend		;
+			;
+			;but when I was experimenting with this programme
+			;I just had a whole bunch of ";nop" lines here
+			;and I removed the ";" until I got the spacing more
+			;or less where I wanted it
 	sta  RESP0
+        repeat 10
 	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
+        repend
 	sta  RESP1
 
 	ldy  #$06
