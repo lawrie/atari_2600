@@ -88,20 +88,20 @@ module wb_tia #(
         if (valid_read_cmd) begin
           dat_o <= 0;
           case (adr_i)
-          'h00: dat_o <= cx[14:13] << 6;       // CXM0P
-          'h01: dat_o <= cx[12:11] << 6;       // CXM1P
-          'h02: dat_o <= cx[10:9] << 6;        // CXP0FB
-          'h03: dat_o <= cx[8:7] << 6;         // CXP1FB
-          'h04: dat_o <= cx[6:5] << 6;         // CXM0FB
-          'h05: dat_o <= cx[4:3] << 6;         // CXM1FB
-          'h06: dat_o <= cx[2] << 7;           // CXBLPF
-          'h07: dat_o <= cx[1:0] << 6;         // CXPPMM
-          'h08: dat_o <= inpt0 << 7;      // INPT0
-          'h09: dat_o <= inpt1 << 7;      // INPT1
-          'h0a: dat_o <= inpt2 << 7;      // INPT2
-          'h0b: dat_o <= inpt3 << 7;      // INPT3
-          'h0c: dat_o <= buttons[A] << 7; // INPT4
-          'h0d: dat_o <= inpt5 << 7;      // INPT5
+          'h30, 'h00: dat_o <= cx[14:13] << 6;       // CXM0P
+          'h31, 'h01: dat_o <= cx[12:11] << 6;       // CXM1P
+          'h32, 'h02: dat_o <= cx[10:9] << 6;        // CXP0FB
+          'h33, 'h03: dat_o <= cx[8:7] << 6;         // CXP1FB
+          'h34, 'h04: dat_o <= cx[6:5] << 6;         // CXM0FB
+          'h35, 'h05: dat_o <= cx[4:3] << 6;         // CXM1FB
+          'h36, 'h06: dat_o <= cx[2] << 7;           // CXBLPF
+          'h37, 'h07: dat_o <= cx[1:0] << 6;         // CXPPMM
+          'h38, 'h08: dat_o <= inpt0 << 7;           // INPT0
+          'h39, 'h09: dat_o <= inpt1 << 7;           // INPT1
+          'h3a, 'h0a: dat_o <= inpt2 << 7;           // INPT2
+          'h3b, 'h0b: dat_o <= inpt3 << 7;           // INPT3
+          'h3c, 'h0c: dat_o <= buttons[A] << 7;      // INPT4
+          'h3d, 'h0d: dat_o <= inpt5 << 7;           // INPT5
           endcase
         end
 
